@@ -1,56 +1,46 @@
-# Función para leer los números desde el archivo
-leer_numeros <- function(archivo) {
-  # Verificar si el archivo existe
-  if (!file.exists(archivo)) {
-    stop("El archivo no existe. Deteniendo la ejecución.")
-  }
-  
-  # Leer los datos y convertirlos a un vector de enteros
-  numeros <- as.integer(readLines(archivo))
-  
-  return(numeros)
-}
+library(dplyr)
+library(tidyr)
 
-# Función para calcular y escribir los resultados en el archivo
-procesar_resultados <- function(numeros) {
-  # Calcular la media, mediana y desviación estándar
-  media <- mean(numeros)
-  mediana <- median(numeros)
-  desviacion_estandar <- sd(numeros)
-  
-  # Verificar si hay alta variabilidad
-  if (desviacion_estandar > 10) {
-    mensaje_variabilidad <- "Alta variabilidad en los datos (desviación estándar > 10)."
-  } else {
-    mensaje_variabilidad <- "Variabilidad normal en los datos."
-  }
-  
-  # Usar sapply() para calcular el cuadrado de cada número
-  cuadrados <- sapply(numeros, function(x) x^2)
-  
-  # Crear el texto para escribir en el archivo de resultados
-  resultados <- paste(
-    "Estadísticos:\n",
-    "Media: ", media, "\n",
-    "Mediana: ", mediana, "\n",
-    "Desviación Estándar: ", desviacion_estandar, "\n",
-    mensaje_variabilidad, "\n\n",
-    "Cuadrados de los números:\n", 
-    paste(cuadrados, collapse = ", "), "\n"
-  )
-  
-  # Escribir los resultados en el archivo de salida
-  writeLines(resultados, "resultados.txt")
-}
+data(mtcars)
+df <- as.data.frame(mtcars)
 
-# Función principal que coordina todo el proceso
-procesar_datos_numeros <- function() {
-  # Leer los números desde el archivo
-  numeros <- leer_numeros("numeros.txt")
-  
-  # Procesar los resultados y escribirlos en el archivo de salida
-  procesar_resultados(numeros)
-}
+df_selected <- df %>%
+  select(mpg, cyl, hp, gear) %>%
+  filter(cyl > 4)
 
-# Ejecutar la función principal
-procesar_datos_numeros()
+print(df_selected)
+
+df_sorted <- df_selected %>%
+  arrange(desc(hp)) %>%
+  rename(consumo = mpg, potencia = hp)
+
+print(df_sorted)
+
+df_efficiency <- df_sorted %>%
+  mutate(eficiencia = consumo / potencia) %>%
+  group_by(cyl) %>%
+  summarise(consumo_medio = mean(consumo), potencia_max = max(potencia))
+
+print(df_efficiency)
+
+df_gear <- data.frame(
+  gear = c(3, 4, 5),
+  tipo_transmision = c("Manual", "Automática", "Semiautomática")
+)
+
+df_joined <- left_join(df_sorted, df_gear, by = "gear")
+
+print(df_joined)
+
+df_long <- df_joined %>%
+  pivot_longer(cols = c(consumo, potencia, eficiencia), 
+               names_to = "medida", values_to = "valor")
+
+df_long_grouped <- df_long %>%
+  group_by(cyl, gear, tipo_transmision, medida) %>%
+  summarise(valor = mean(valor), .groups = "drop")
+
+df_wide <- df_long_grouped %>%
+  pivot_wider(names_from = medida, values_from = valor)
+
+print(df_wide)
